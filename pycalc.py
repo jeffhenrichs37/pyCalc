@@ -16,6 +16,9 @@ from functools import partial
 __version__ = '0.1'
 __author__ = 'Jeff Henrichs'
 
+# Global Constant
+ERROR_MSG = 'ERROR'
+
 # Create a subclass of QMainWindow to setup the calculator's GUI
 class PyCalcUi(QMainWindow):
     #PyCalc's View (GUI)
@@ -97,13 +100,23 @@ class PyCalcUi(QMainWindow):
 # Create a Controller class to connect the GUI ad the model
 class PyCalcCtrl:
     # PyCalc Controller Class
-    def __init__(self, view):
+    def __init__(self, model, view):
         #Controller initializer
-        self._view = view# Connect signals and slots
+        self._evaluate = model
+        self._view = view
+        # Connect signals and slots
         self._connectSignals()
+
+    def _calculateResult(self):
+        # Evaluate expression
+        result = self._evaluate(expression=self._view.displayText())
+        self._view.setDisplayText(result)
 
     def buildExpression(self, sub_exp):
         #Build expression
+        if self._view.displayText() == ERROR_MSG:
+            self.view.clearDisplay()
+
         expression = self._view.displayText() + sub_exp
         self._view.setDisplayText(expression)
 
@@ -113,7 +126,10 @@ class PyCalcCtrl:
             if btnText not in {'=', 'C'}:
                 btn.clicked.connect(partial(self.buildExpression, btnText))
 
+        self._view.buttons['='].clicked.connect(self._calculateResult)
+        self._view.display.returnPressed.connect(self._calculateResult)
         self._view.buttons['C'].clicked.connect(self._view.clearDisplay)
+
 
 # Client code
 def main():
@@ -124,9 +140,20 @@ def main():
     view = PyCalcUi()
     view.show()
     # Create instances of the model and the controller
-    PyCalcCtrl(view=view)
+    model = evaluateExpression
+    PyCalcCtrl(model=model, view=view)
     # Execute the calculator's main loop
     sys.exit(pycalc.exec())
+
+# Create a Model to handles the calculator's operation
+def evaluateExpression(expression):
+    # Evaluate expression
+    try:
+        result = str(eval(expression, {}, {}))
+    except Exception:
+        result = ERROR_MSG
+
+    return result
 
 
 if __name__ == '__main__':
